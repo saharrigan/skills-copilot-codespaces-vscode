@@ -1,48 +1,32 @@
 //Create web server
 const express = require('express');
 const app = express();
-const bodyParser = require('body-parser');
-const fs = require('fs');
-const path = require('path');
-const port = 3000;
+app.use(express.json());
+app.use(express.static('public'));
 
-app.use(bodyParser.urlencoded({ extended: false }));
-app.use(bodyParser.json());
+//Set up the database
+const low = require('lowdb');
+const FileSync = require('lowdb/adapters/FileSync');
+const adapter = new FileSync('comments.json');
+const db = low(adapter);
 
-app.use(express.static(path.join(__dirname, 'public')));
+//Set up the database
+db.defaults({ comments: [] }).write();
 
-app.get('/', (req, res) => {
-    res.sendFile(path.join(__dirname, 'public', 'index.html'));
-});
-
+//Get the comments from the database
 app.get('/comments', (req, res) => {
-    fs.readFile('comments.json', (err, data) => {
-        if (err) {
-            res.status(500).send('Error reading comments.json');
-        } else {
-            res.json(JSON.parse(data));
-        }
-    });
+    const comments = db.get('comments').value();
+    res.send(comments);
 });
 
+//Post a comment to the database
 app.post('/comments', (req, res) => {
-    fs.readFile('comments.json', (err, data) => {
-        if (err) {
-            res.status(500).send('Error reading comments.json');
-        } else {
-            const comments = JSON.parse(data);
-            comments.push(req.body);
-            fs.writeFile('comments.json', JSON.stringify(comments), (err) => {
-                if (err) {
-                    res.status(500).send('Error writing comments.json');
-                } else {
-                    res.status(201).send('Comment added');
-                }
-            });
-        }
-    });
+    const comment = req.body;
+    db.get('comments').push(comment).write();
+    res.send(comment);
 });
 
-app.listen(port, () => {
-    console.log(`Server running on port ${port}`);
+//Start the server
+app.listen(3000, () => {
+    console.log('Server is running on port 3000');
 });
